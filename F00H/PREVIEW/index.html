@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>F00H — HOOK COMPOSITOR</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e5e5e5;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    border-bottom: 1px solid #222;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  header h1 span { color: #c9a84c; }
+  header p { font-size: 11px; color: #666; margin-top: 2px; }
+  .zero { font-size: 11px; color: #444; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+  .grid { display: grid; grid-template-columns: 380px 1fr; gap: 24px; }
+  @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: #161616;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .panel h3 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 12px;
+  }
+  /* ── Upload buttons (copié de dev6-D F09) ── */
+  .upload-label {
+    display: block;
+    width: 100%;
+    padding: 18px 8px;
+    border: 2px dashed #333;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    font-size: 13px;
+    color: #666;
+  }
+  .upload-label:hover { border-color: #c9a84c; color: #c9a84c; }
+  .upload-label.has-file { border-color: #c9a84c; color: #c9a84c; font-size: 12px; }
+  .upload-label input { display: none; }
+  .upload-note { font-size: 10px; color: #555; margin-top: 6px; text-align: center; }
+  /* ── Bouton background ── */
+  .bg-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #c9a84c;
+    background: #c9a84c;
+    color: #000;
+    font-weight: 700;
+    font-size: 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .bg-btn:hover { background: #dbb85e; }
+  .bg-btn.off { background: transparent; color: #c9a84c; }
+  /* ── Sliders ── */
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .slider-row label {
+    width: 120px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #888;
+    flex-shrink: 0;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: #333;
+    outline: none;
+    cursor: pointer;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #c9a84c;
+    border: 2px solid #0a0a0a;
+    cursor: pointer;
+  }
+  .slider-row input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #c9a84c;
+    border: 2px solid #0a0a0a;
+    cursor: pointer;
+  }
+  .slider-row .val {
+    width: 62px;
+    text-align: right;
+    font-family: monospace;
+    font-size: 12px;
+    color: #c9a84c;
+    flex-shrink: 0;
+  }
+  .layer-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #222;
+  }
+  .layer-title .tag { color: #c9a84c; }
+  /* ── Export ── */
+  pre {
+    font-size: 11px;
+    color: #c9a84c;
+    background: #0a0a0a;
+    border-radius: 6px;
+    padding: 12px;
+    overflow: auto;
+    max-height: 160px;
+    font-family: monospace;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .btn-row { display: flex; gap: 10px; }
+  .btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+  }
+  .btn.dark { background: #222; color: #e5e5e5; }
+  .btn.dark:hover { background: #333; }
+  .btn.gold { background: #c9a84c; color: #000; }
+  .btn.gold:hover { background: #dbb85e; }
+  /* ── Preview ── */
+  .preview-area {
+    background: #161616;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 16px;
+    position: sticky;
+    top: 16px;
+  }
+  .preview-area h3 { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #888; margin-bottom: 12px; }
+  .canvas-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    background: #0a0a0a;
+    border: 1px dashed #222;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  canvas {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 6px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    background: #000;
+  }
+  .hint { font-size: 12px; color: #555; text-align: center; padding: 40px 20px; }
+  .howto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .howto div .t { color: #c9a84c; font-weight: 600; font-size: 11px; margin-bottom: 2px; }
+  .howto div p { font-size: 11px; color: #666; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1><span>F00H</span> HOOK COMPOSITOR</h1>
+    <p>Compositing Background Mismatch — 2 images, curseurs indépendants</p>
+  </div>
+  <div class="zero">100% Navigateur &bull; Coût zéro</div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <!-- ══ PANNEAU GAUCHE : contrôles ══ -->
+    <div>
+      <!-- Uploads -->
+      <div class="panel">
+        <h3>📤 Images source</h3>
+        <label class="upload-label" id="bgLabel">
+          <input type="file" id="bgInput" accept="image/*" />
+          <span id="bgText">Cliquez pour uploader le BACKGROUND</span>
+        </label>
+        <div class="upload-note">Frame du fond absurde (backrooms, konoha…)</div>
+
+        <label class="upload-label" id="strLabel" style="margin-top:10px;">
+          <input type="file" id="strInput" accept="image/*" />
+          <span id="strText">Cliquez pour uploader le STREAMER</span>
+        </label>
+        <div class="upload-note">Streamer détouré — fond transparent (PNG)</div>
+      </div>
+
+      <!-- Bouton background -->
+      <div class="panel">
+        <h3>🖼️ Calque</h3>
+        <button class="bg-btn" id="bgBtn" disabled>Mettre le background derrière le streamer</button>
+      </div>
+
+      <!-- Curseurs BACKGROUND -->
+      <div class="panel">
+        <div class="layer-title">🎨 <span class="tag">BACKGROUND</span> — échelle &amp; position</div>
+        <div class="slider-row">
+          <label>Échelle</label>
+          <input type="range" id="bgScale" min="0.5" max="6" step="0.05" value="1" disabled />
+          <span class="val" id="bgScaleVal">1.00×</span>
+        </div>
+        <div class="slider-row">
+          <label>Position V</label>
+          <input type="range" id="bgY" min="-1000" max="1000" step="5" value="0" disabled />
+          <span class="val" id="bgYVal">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Position H</label>
+          <input type="range" id="bgX" min="-1000" max="1000" step="5" value="0" disabled />
+          <span class="val" id="bgXVal">0</span>
+        </div>
+      </div>
+
+      <!-- Curseurs STREAMER -->
+      <div class="panel">
+        <div class="layer-title">🎬 <span class="tag">STREAMER</span> — échelle &amp; position</div>
+        <div class="slider-row">
+          <label>Échelle</label>
+          <input type="range" id="strScale" min="0.5" max="6" step="0.05" value="1" disabled />
+          <span class="val" id="strScaleVal">1.00×</span>
+        </div>
+        <div class="slider-row">
+          <label>Position V</label>
+          <input type="range" id="strY" min="-1000" max="1000" step="5" value="0" disabled />
+          <span class="val" id="strYVal">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Position H</label>
+          <input type="range" id="strX" min="-1000" max="1000" step="5" value="0" disabled />
+          <span class="val" id="strXVal">0</span>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="panel">
+        <h3>📤 Export Config</h3>
+        <pre id="jsonOut">{ "f00h_composite": "…" }</pre>
+        <div class="btn-row">
+          <button class="btn dark" id="copyBtn">Copy JSON</button>
+          <button class="btn gold" id="dlBtn">Download .json</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PANNEAU DROIT : preview ══ -->
+    <div class="preview-area">
+      <h3>🔍 Aperçu compositing</h3>
+      <div class="canvas-wrap">
+        <div class="hint" id="hint">
+          Uploadez le background et le streamer pour commencer.<br /><br />
+          Puis cliquez sur « Mettre le background ».
+        </div>
+        <canvas id="cv" width="1080" height="1920" style="display:none;"></canvas>
+      </div>
+      <div class="howto">
+        <div><div class="t">1. Upload</div><p>Background + streamer détouré (PNG transparent)</p></div>
+        <div><div class="t">2. Ajustez</div><p>Échelle (2× → 6×), position haut/bas, gauche/droite pour chaque image</p></div>
+        <div><div class="t">3. Export</div><p>Le JSON testé sur une image → s'applique à la vidéo sur Modal</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── État ────────────────────────────────────────────────
+const state = {
+  bg: null,        // Image (background)
+  str: null,       // Image (streamer)
+  bgOn: false,     // background placé derrière
+  bgScale: 1, bgX: 0, bgY: 0,
+  strScale: 1, strX: 0, strY: 0,
+  bgName: null, strName: null,
+};
+
+const CV = document.getElementById('cv');
+const ctx = CV.getContext('2d');
+const hint = document.getElementById('hint');
+
+// ── Uploads ─────────────────────────────────────────────
+function bindUpload(inputId, labelId, textId, key, nameKey) {
+  const input = document.getElementById(inputId);
+  const label = document.getElementById(labelId);
+  const text = document.getElementById(textId);
+  input.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        state[key] = img;
+        state[nameKey] = file.name;
+        label.classList.add('has-file');
+        text.textContent = `✓ ${file.name}  (${img.naturalWidth}×${img.naturalHeight})`;
+        checkReady();
+        draw();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+bindUpload('bgInput', 'bgLabel', 'bgText', 'bg', 'bgName');
+bindUpload('strInput', 'strLabel', 'strText', 'str', 'strName');
+
+// ── Bouton background ───────────────────────────────────
+const bgBtn = document.getElementById('bgBtn');
+bgBtn.addEventListener('click', () => {
+  if (!state.bg) return;
+  state.bgOn = !state.bgOn;
+  bgBtn.textContent = state.bgOn
+    ? '✓ Background placé — cliquer pour retirer'
+    : 'Mettre le background derrière le streamer';
+  bgBtn.classList.toggle('off', state.bgOn);
+  draw();
+});
+
+function checkReady() {
+  const ready = !!(state.bg && state.str);
+  document.querySelectorAll('.slider-row input').forEach((i) => { i.disabled = !ready; });
+  bgBtn.disabled = !state.bg;
+  if (!ready) return;
+  hint.style.display = 'none';
+  CV.style.display = 'block';
+}
+
+// ── Curseurs ────────────────────────────────────────────
+function bindSlider(id, valId, key, fmt) {
+  const input = document.getElementById(id);
+  const out = document.getElementById(valId);
+  input.addEventListener('input', () => {
+    state[key] = parseFloat(input.value);
+    out.textContent = fmt ? fmt(state[key]) : String(Math.round(state[key]));
+    draw();
+  });
+}
+bindSlider('bgScale', 'bgScaleVal', 'bgScale', (v) => v.toFixed(2) + '×');
+bindSlider('bgY',     'bgYVal',     'bgY',     null);
+bindSlider('bgX',     'bgXVal',     'bgX',     null);
+bindSlider('strScale','strScaleVal','strScale',(v) => v.toFixed(2) + '×');
+bindSlider('strY',    'strYVal',    'strY',    null);
+bindSlider('strX',    'strXVal',    'strX',    null);
+
+// ── Dessin ──────────────────────────────────────────────
+function draw() {
+  const W = CV.width, H = CV.height;
+  ctx.clearRect(0, 0, W, H);
+  // fond neutre sombre si pas de bg placé
+  ctx.fillStyle = '#0d0d0d';
+  ctx.fillRect(0, 0, W, H);
+
+  // 1) BACKGROUND (cover de base × échelle, puis position)
+  if (state.bg && state.bgOn) {
+    const iw = state.bg.naturalWidth, ih = state.bg.naturalHeight;
+    const base = Math.max(W / iw, H / ih);
+    const s = base * state.bgScale;
+    const dw = iw * s, dh = ih * s;
+    ctx.drawImage(state.bg, (W - dw) / 2 + state.bgX, (H - dh) / 2 + state.bgY, dw, dh);
+  }
+
+  // 2) STREAMER (fit de base × échelle, puis position) — alpha préservé
+  if (state.str) {
+    const iw = state.str.naturalWidth, ih = state.str.naturalHeight;
+    const base = Math.min(W / iw, H / ih);
+    const s = base * state.strScale;
+    const dw = iw * s, dh = ih * s;
+    ctx.drawImage(state.str, (W - dw) / 2 + state.strX, (H - dh) / 2 + state.strY, dw, dh);
+  }
+
+  updateJson();
+}
+
+// ── Export JSON ─────────────────────────────────────────
+function buildConfig() {
+  return {
+    f00h_composite: {
+      version: '1.0.0',
+      generated: new Date().toISOString(),
+      canvas: { width: CV.width, height: CV.height },
+      source: {
+        background: state.bgName || null,
+        streamer: state.strName || null,
+      },
+      background_placed: state.bgOn,
+      layers: {
+        background: {
+          scale: +state.bgScale.toFixed(2),
+          pos_x: state.bgX,
+          pos_y: state.bgY,
+        },
+        streamer: {
+          scale: +state.strScale.toFixed(2),
+          pos_x: state.strX,
+          pos_y: state.strY,
+        },
+      },
+    },
+  };
+}
+
+function updateJson() {
+  document.getElementById('jsonOut').textContent = JSON.stringify(buildConfig(), null, 2);
+}
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText(JSON.stringify(buildConfig(), null, 2));
+});
+document.getElementById('dlBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(buildConfig(), null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `f00h_config_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a);
+});
+
+draw();
+</script>
+</body>
+</html>
