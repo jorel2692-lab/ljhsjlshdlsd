@@ -1,0 +1,39 @@
+{
+  "schema_version": "dev10.hook-presets.v1",
+  "description": "Bibliothèque de backgrounds absurdes pour le hook F00H. Un fond choisi au hasard est appliqué pendant les 2 premières secondes du clip, puis on revient au fond original.",
+  "hook_duration_seconds": 2.0,
+  "hook_duration_frames": 60,
+  "random_selection": true,
+  "default_preset": "backrooms",
+  "sfx": {
+    "glitch": "sfx/glitch.mp3",
+    "whoosh": "sfx/whoosh.mp3"
+  },
+  "default_sfx": "glitch",
+  "backgrounds": {
+    "backrooms": {"label": "Backrooms", "asset": "backgrounds/backrooms.mp4", "type": "video", "tag": "horror"},
+    "konoha": {"label": "Konoha", "asset": "backgrounds/konoha.mp4", "type": "video", "tag": "anime"},
+    "matrix": {"label": "Matrix Code Rain", "asset": "backgrounds/matrix.mp4", "type": "video", "tag": "cyber"},
+    "void": {"label": "Void Espace Noir", "asset": "backgrounds/void.mp4", "type": "video", "tag": "minimal"},
+    "underwater": {"label": "Underwater Ocean", "asset": "backgrounds/underwater.mp4", "type": "video", "tag": "nature"},
+    "volcanic": {"label": "Volcanic Lave", "asset": "backgrounds/volcanic.mp4", "type": "video", "tag": "danger"},
+    "space": {"label": "Space Galaxie", "asset": "backgrounds/space.mp4", "type": "video", "tag": "cosmic"},
+    "retro_8bit": {"label": "Retro 8-bit", "asset": "backgrounds/retro_8bit.mp4", "type": "video", "tag": "gaming"},
+    "static": {"label": "TV Static Bruit", "asset": "backgrounds/static.mp4", "type": "video", "tag": "glitch"},
+    "castle": {"label": "Medieval Chateau", "asset": "backgrounds/castle.mp4", "type": "video", "tag": "fantasy"}
+  },
+  "composition": {
+    "background_opacity": 1.0,
+    "transition_frame": 60,
+    "transition_type": "hard_cut",
+    "sfx_timing": "on_transition",
+    "sfx_volume": 0.8
+  },
+  "gates": {
+    "H0_INPUT": "Clip source existe et est lisible (H.264, 1080x1920)",
+    "H1_BACKGROUND": "Fond alternatif existe dans la bibliotheque",
+    "H2_HOOK": "Swap applique frames 0-59, retour frame 60+",
+    "H3_SFX": "Fichier SFX present et synchronise au frame 60",
+    "H4_OUTPUT": "Clip final = hook 2s + clip original intact"
+  }
+}
