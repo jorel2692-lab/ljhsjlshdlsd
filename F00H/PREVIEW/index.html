@@ -74,6 +74,24 @@
   }
   .bg-btn:hover { background: #dbb85e; }
   .bg-btn.off { background: transparent; color: #c9a84c; }
+  /* ── Format selector ── */
+  .fmt-row { display: flex; gap: 8px; }
+  .fmt-btn {
+    flex: 1;
+    padding: 10px 6px;
+    border: 1px solid #333;
+    background: #0a0a0a;
+    color: #888;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+  }
+  .fmt-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+  .fmt-btn.active { border-color: #c9a84c; background: #c9a84c; color: #000; }
+  .fmt-btn small { display: block; font-size: 9px; font-weight: 400; opacity: 0.75; margin-top: 2px; }
   /* ── Sliders ── */
   .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .slider-row label {
@@ -196,7 +214,7 @@
 <header>
   <div>
     <h1><span>F00H</span> HOOK COMPOSITOR</h1>
-    <p>Compositing Background Mismatch — 2 images, curseurs indépendants</p>
+    <p>Compositing Background Mismatch — 2 images, curseurs indépendants, format de sortie libre</p>
   </div>
   <div class="zero">100% Navigateur &bull; Coût zéro</div>
 </header>
@@ -221,6 +239,23 @@
         <div class="upload-note">Streamer détouré — fond transparent (PNG)</div>
       </div>
 
+      <!-- Format de sortie -->
+      <div class="panel">
+        <h3>📐 Format de sortie</h3>
+        <div class="fmt-row">
+          <button class="fmt-btn active" data-fmt="vertical" id="fmtVertical">
+            Vertical<small>9:16 &bull; 1080×1920</small>
+          </button>
+          <button class="fmt-btn" data-fmt="horizontal" id="fmtHorizontal">
+            Horizontal<small>16:9 &bull; 1920×1080</small>
+          </button>
+          <button class="fmt-btn" data-fmt="square" id="fmtSquare">
+            Carré<small>1:1 &bull; 1080×1080</small>
+          </button>
+        </div>
+        <div class="upload-note">Choisissez AVANT d'exporter — le JSON pilote le rendu Modal</div>
+      </div>
+
       <!-- Bouton background -->
       <div class="panel">
         <h3>🖼️ Calque</h3>
@@ -237,12 +272,12 @@
         </div>
         <div class="slider-row">
           <label>Position V</label>
-          <input type="range" id="bgY" min="-1000" max="1000" step="5" value="0" disabled />
+          <input type="range" id="bgY" min="-1920" max="1920" step="5" value="0" disabled />
           <span class="val" id="bgYVal">0</span>
         </div>
         <div class="slider-row">
           <label>Position H</label>
-          <input type="range" id="bgX" min="-1000" max="1000" step="5" value="0" disabled />
+          <input type="range" id="bgX" min="-1920" max="1920" step="5" value="0" disabled />
           <span class="val" id="bgXVal">0</span>
         </div>
       </div>
@@ -257,12 +292,12 @@
         </div>
         <div class="slider-row">
           <label>Position V</label>
-          <input type="range" id="strY" min="-1000" max="1000" step="5" value="0" disabled />
+          <input type="range" id="strY" min="-1920" max="1920" step="5" value="0" disabled />
           <span class="val" id="strYVal">0</span>
         </div>
         <div class="slider-row">
           <label>Position H</label>
-          <input type="range" id="strX" min="-1000" max="1000" step="5" value="0" disabled />
+          <input type="range" id="strX" min="-1920" max="1920" step="5" value="0" disabled />
           <span class="val" id="strXVal">0</span>
         </div>
       </div>
@@ -290,7 +325,7 @@
       </div>
       <div class="howto">
         <div><div class="t">1. Upload</div><p>Background + streamer détouré (PNG transparent)</p></div>
-        <div><div class="t">2. Ajustez</div><p>Échelle (2× → 6×), position haut/bas, gauche/droite pour chaque image</p></div>
+        <div><div class="t">2. Format</div><p>Vertical / Horizontal / Carré — le canvas s'adapte</p></div>
         <div><div class="t">3. Export</div><p>Le JSON testé sur une image → s'applique à la vidéo sur Modal</p></div>
       </div>
     </div>
@@ -299,7 +334,14 @@
 
 <script>
 // ── État ────────────────────────────────────────────────
+const FORMATS = {
+  vertical:   { w: 1080, h: 1920, ratio: '9:16',  label: 'vertical' },
+  horizontal: { w: 1920, h: 1080, ratio: '16:9',  label: 'horizontal' },
+  square:     { w: 1080, h: 1080, ratio: '1:1',   label: 'carre' },
+};
+
 const state = {
+  format: 'vertical',
   bg: null,        // Image (background)
   str: null,       // Image (streamer)
   bgOn: false,     // background placé derrière
@@ -311,6 +353,39 @@ const state = {
 const CV = document.getElementById('cv');
 const ctx = CV.getContext('2d');
 const hint = document.getElementById('hint');
+
+// ── Format de sortie ───────────────────────────────────
+function setFormat(f) {
+  state.format = f;
+  const F = FORMATS[f];
+  CV.width = F.w;
+  CV.height = F.h;
+  document.querySelectorAll('.fmt-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.fmt === f);
+  });
+  // Les curseurs X/Y suivent les dimensions du canvas
+  const xyMap = [['bgX', 'bgY'], ['strX', 'strY']];
+  xyMap.forEach(([xId, yId]) => {
+    [xId, yId].forEach((id, i) => {
+      const el = document.getElementById(id);
+      const dim = i === 0 ? F.w : F.h;
+      el.min = -dim;
+      el.max = dim;
+      if (Math.abs(parseFloat(el.value)) > dim) {
+        el.value = 0;
+        state[id] = 0;
+      }
+    });
+  });
+  document.getElementById('bgXVal').textContent = String(Math.round(state.bgX));
+  document.getElementById('bgYVal').textContent = String(Math.round(state.bgY));
+  document.getElementById('strXVal').textContent = String(Math.round(state.strX));
+  document.getElementById('strYVal').textContent = String(Math.round(state.strY));
+  draw();
+}
+document.querySelectorAll('.fmt-btn').forEach((b) => {
+  b.addEventListener('click', () => setFormat(b.dataset.fmt));
+});
 
 // ── Uploads ─────────────────────────────────────────────
 function bindUpload(inputId, labelId, textId, key, nameKey) {
@@ -408,11 +483,17 @@ function draw() {
 
 // ── Export JSON ─────────────────────────────────────────
 function buildConfig() {
+  const F = FORMATS[state.format];
   return {
     f00h_composite: {
-      version: '1.0.0',
+      version: '2.0.0',
       generated: new Date().toISOString(),
-      canvas: { width: CV.width, height: CV.height },
+      format: {
+        name: F.label,
+        ratio: F.ratio,
+        width: CV.width,
+        height: CV.height,
+      },
       source: {
         background: state.bgName || null,
         streamer: state.strName || null,
@@ -450,7 +531,7 @@ document.getElementById('dlBtn').addEventListener('click', () => {
   URL.revokeObjectURL(a);
 });
 
-draw();
+setFormat('vertical');
 </script>
 </body>
 </html>
